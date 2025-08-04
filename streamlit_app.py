@@ -41,9 +41,8 @@ with tab1:
         notes = st.text_area("Notes")
 
         if st.button("💾 Save Annotation"):
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             base_name = os.path.splitext(uploaded_file.name)[0]
-            output_filename = f"{base_name}_{timestamp}.json"
+            output_filename = f"{base_name}.json"
             output_path = os.path.join(SAVED_DIR, output_filename)
 
             annotation = {
@@ -85,3 +84,4 @@ with tab2:
             file_name="mongrel_annotations.zip",
             mime="application/zip"
         )
+
