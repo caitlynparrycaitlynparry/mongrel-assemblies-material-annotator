@@ -3,39 +3,85 @@ import os
 import json
 from PIL import Image
 from datetime import datetime
+import zipfile
+import io
 
-# Load adjectives from file
-with open("adjectives.txt", "r") as f:
-    adjectives = [line.strip() for line in f.readlines() if line.strip()]
+# Load adjectives
+ADJECTIVE_FILE = "adjectives.txt"
+SAVED_DIR = "saved_labels"
 
-st.title(" Mongrel Material  Adjective Annotator")
+# Ensure saved_labels directory exists
+os.makedirs(SAVED_DIR, exist_ok=True)
 
-uploaded_file = st.file_uploader("Upload a material image (JPG or PNG)", type=["jpg", "jpeg", "png"])
+# Try loading adjectives
+try:
+    with open(ADJECTIVE_FILE, "r") as f:
+        adjectives = [line.strip() for line in f.readlines() if line.strip()]
+except FileNotFoundError:
+    adjectives = []
 
-if uploaded_file:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded image", use_column_width=True)
+# App title
+st.set_page_config(page_title="Mongrel Assemblies Adjective Annotator")
+st.title("🐾 Mongrel Adjective Annotator")
 
-    st.subheader("Step 2: Select adjectives that describe this material")
-    selected_adjectives = st.multiselect("Choose one or more poetic descriptors", adjectives)
+# Tabs
+tab1, tab2 = st.tabs(["📤 Annotate Image", "📁 View & Download Saved"])
 
-    st.subheader("Optional notes or location")
-    notes = st.text_area("Notes")
+with tab1:
+    uploaded_file = st.file_uploader("Upload a material image (JPG or PNG)", type=["jpg", "jpeg", "png"])
 
-    if st.button(" Save Annotation"):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.splitext(uploaded_file.name)[0]
-        output_filename = f"{filename}_{timestamp}.json"
-        output_path = os.path.join("saved_labels", output_filename)
+    if uploaded_file:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="Uploaded image", use_column_width=True)
 
-        annotation = {
-            "filename": uploaded_file.name,
-            "adjectives": selected_adjectives,
-            "notes": notes
-        }
+        st.subheader("Step 2: Select adjectives that describe this material")
+        selected_adjectives = st.multiselect("Choose one or more poetic descriptors", adjectives)
 
-        os.makedirs("saved_labels", exist_ok=True)
-        with open(output_path, "w") as f:
-            json.dump(annotation, f, indent=2)
+        st.subheader("Optional notes or location")
+        notes = st.text_area("Notes")
 
-        st.success(f"Annotation saved to saved_labels/{output_filename}")
+        if st.button("💾 Save Annotation"):
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            base_name = os.path.splitext(uploaded_file.name)[0]
+            output_filename = f"{base_name}_{timestamp}.json"
+            output_path = os.path.join(SAVED_DIR, output_filename)
+
+            annotation = {
+                "filename": uploaded_file.name,
+                "adjectives": selected_adjectives,
+                "notes": notes
+            }
+
+            with open(output_path, "w") as f:
+                json.dump(annotation, f, indent=2)
+
+            st.success(f"Annotation saved to {output_filename}")
+
+with tab2:
+    st.subheader("Saved Annotations")
+
+    json_files = [f for f in os.listdir(SAVED_DIR) if f.endswith(".json")]
+
+    if not json_files:
+        st.info("No annotations found.")
+    else:
+        for file in sorted(json_files):
+            with open(os.path.join(SAVED_DIR, file), "r") as f:
+                data = json.load(f)
+            st.markdown(f"**{file}**")
+            st.write(data)
+
+        # Download all as ZIP
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zipf:
+            for file in json_files:
+                file_path = os.path.join(SAVED_DIR, file)
+                zipf.write(file_path, arcname=file)
+        buffer.seek(0)
+
+        st.download_button(
+            label="📦 Download All Annotations (.zip)",
+            data=buffer,
+            file_name="mongrel_annotations.zip",
+            mime="application/zip"
+        )
