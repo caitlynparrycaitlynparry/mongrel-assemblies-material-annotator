@@ -7,4 +7,10 @@ Ancient
 Scared
 Mute
 Abundant
+Dark
 Timid
+Light
+Sad
+Rusty
+Stained
+Old
