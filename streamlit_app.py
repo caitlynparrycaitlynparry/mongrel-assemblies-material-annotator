@@ -1,87 +1,47 @@
 import streamlit as st
-import os
 import json
-from PIL import Image
+import os
 from datetime import datetime
-import zipfile
-import io
 
-# Load adjectives
-ADJECTIVE_FILE = "adjectives.txt"
-SAVED_DIR = "saved_labels"
+# --- CONFIG ---
+ADJECTIVES = [
+    "dirty", "weathered", "scarred", "ancient",
+    "playful", "proud", "timid", "mute",
+    "abundant", "elegant", "stubborn", "heavy"
+]
+SAVE_DIR = "saved_labels"
+os.makedirs(SAVE_DIR, exist_ok=True)
 
-# Ensure saved_labels directory exists
-os.makedirs(SAVED_DIR, exist_ok=True)
+st.title("📌 Mongrel Adjective Annotator")
 
-# Try loading adjectives
-try:
-    with open(ADJECTIVE_FILE, "r") as f:
-        adjectives = [line.strip() for line in f.readlines() if line.strip()]
-except FileNotFoundError:
-    adjectives = []
+# --- UPLOAD IMAGE ---
+uploaded_image = st.file_uploader("Upload a material image", type=["jpg", "jpeg", "png"])
 
-# App title
-st.set_page_config(page_title="Mongrel Assemblies Adjective Annotator")
-st.title("🐾 Mongrel Adjective Annotator")
+if uploaded_image:
+    st.image(uploaded_image, caption="Uploaded Image", use_column_width=True)
+    file_name = uploaded_image.name
 
-# Tabs
-tab1, tab2 = st.tabs(["📤 Annotate Image", "📁 View & Download Saved"])
+    # --- SELECT ADJECTIVES ---
+    selected_adjectives = st.multiselect("Select adjectives that describe this material:", ADJECTIVES)
 
-with tab1:
-    uploaded_file = st.file_uploader("Upload a material image (JPG or PNG)", type=["jpg", "jpeg", "png"])
+    adjective_values = {}
+    if selected_adjectives:
+        st.subheader("Assign intensity (–1 = low, +1 = high):")
+        for adj in selected_adjectives:
+            val = st.slider(f"{adj}", -1.0, 1.0, 0.0, 0.1)
+            adjective_values[adj] = val
 
-    if uploaded_file:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded image", use_column_width=True)
+    # --- SAVE BUTTON ---
+    if st.button("Save Annotation"):
+        data = {
+            "filename": file_name,
+            "adjectives": adjective_values
+        }
+        json_name = os.path.splitext(file_name)[0] + ".json"
+        save_path = os.path.join(SAVE_DIR, json_name)
 
-        st.subheader("Step 2: Select adjectives that describe this material")
-        selected_adjectives = st.multiselect("Choose one or more poetic descriptors", adjectives)
+        with open(save_path, "w") as f:
+            json.dump(data, f, indent=4)
 
-        st.subheader("Optional notes or location")
-        notes = st.text_area("Notes")
-
-        if st.button("💾 Save Annotation"):
-            base_name = os.path.splitext(uploaded_file.name)[0]
-            output_filename = f"{base_name}.json"
-            output_path = os.path.join(SAVED_DIR, output_filename)
-
-            annotation = {
-                "filename": uploaded_file.name,
-                "adjectives": selected_adjectives,
-                "notes": notes
-            }
-
-            with open(output_path, "w") as f:
-                json.dump(annotation, f, indent=2)
-
-            st.success(f"Annotation saved to {output_filename}")
-
-with tab2:
-    st.subheader("Saved Annotations")
-
-    json_files = [f for f in os.listdir(SAVED_DIR) if f.endswith(".json")]
-
-    if not json_files:
-        st.info("No annotations found.")
-    else:
-        for file in sorted(json_files):
-            with open(os.path.join(SAVED_DIR, file), "r") as f:
-                data = json.load(f)
-            st.markdown(f"**{file}**")
-            st.write(data)
-
-        # Download all as ZIP
-        buffer = io.BytesIO()
-        with zipfile.ZipFile(buffer, "w") as zipf:
-            for file in json_files:
-                file_path = os.path.join(SAVED_DIR, file)
-                zipf.write(file_path, arcname=file)
-        buffer.seek(0)
-
-        st.download_button(
-            label="📦 Download All Annotations (.zip)",
-            data=buffer,
-            file_name="mongrel_annotations.zip",
-            mime="application/zip"
-        )
-
+        st.success(f"Saved annotation to {save_path}")
+        st.json(data)
