@@ -45,3 +45,29 @@ if uploaded_image:
 
         st.success(f"Saved annotation to {save_path}")
         st.json(data)
+
+import shutil
+import zipfile
+import io
+
+# --- ZIP & DOWNLOAD ---
+st.markdown("---")
+st.subheader("📦 Download All JSON Annotations")
+
+if st.button("Download All as ZIP"):
+    zip_buffer = io.BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        for file_name in os.listdir(SAVE_DIR):
+            if file_name.endswith(".json"):
+                file_path = os.path.join(SAVE_DIR, file_name)
+                zip_file.write(file_path, arcname=file_name)
+
+    zip_buffer.seek(0)
+    st.download_button(
+        label="📥 Click to Download ZIP",
+        data=zip_buffer,
+        file_name="material_annotations.zip",
+        mime="application/zip"
+    )
+
