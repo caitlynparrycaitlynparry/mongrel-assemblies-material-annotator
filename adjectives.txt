@@ -1,7 +1,7 @@
 Weathered
 Dirty
 Playful
-Proud
+Clean
 Elegant
 Ancient
 Scared
@@ -14,3 +14,6 @@ Sad
 Rusty
 Stained
 Old
+Cracked
+Rare
+Loud
